@@ -6,11 +6,11 @@
 
 FILE=$1
 DIR="pub_keys/"
-KEY=$DIR$(basename $1)
-echo $KEY
+KEY=$DIR$(basename "$1")
+
 if [ ! -d "$DIR" ]; then
    echo "Destination dir is not present in repository"
-   exit 1
+   exit 2
 fi
 
 if [ -f "$KEY" ]; then
@@ -24,13 +24,26 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-ssh-keygen -l -f $FILE 1>&2 > /dev/null
+ssh-keygen -l -f "$FILE" 1>&2 > /dev/null
 valid=$?
 
-if [ ! $valid] ]; then
+if [[ ! $valid ]]; then
     echo "Not valid ssh-key"
     exit 1
 fi
 
 echo "Valid key"
-cp $FILE $KEY
+cp "$FILE" "$KEY"
+
+## Add user and key to the inventory file
+
+INVENTORY=$(ls inventory/host_vars/**/*.yml)
+
+for YAML in $INVENTORY; do
+  DIR=$(dirname "$YAML")
+  echo "$YAML"
+  if [[ "$DIR" =~ .*"local"$ || "$YAML" == *"secrets.yml" ]]; then     
+    continue
+  fi
+  yq ".system_administrators" < "$YAML"
+done
